@@ -1523,7 +1523,7 @@ public class DefaultCodegen implements CodegenConfig {
                 // If the format matches a typeMapping (supplied with the --typeMappings flag)
                 // then treat the format as a primitive type.
                 // This allows the typeMapping flag to add a new custom type which can then
-                // be used in the format field.   
+                // be used in the format field.
                 return schema.getFormat();
             }
             return "string";
@@ -2126,6 +2126,7 @@ public class DefaultCodegen implements CodegenConfig {
                 property._enum.add(String.valueOf(i));
             }
             property.isEnum = true;
+            property.isString = p.getType().equals("string");
 
             Map<String, Object> allowableValues = new HashMap<String, Object>();
             allowableValues.put("values", _enum);
@@ -2141,6 +2142,7 @@ public class DefaultCodegen implements CodegenConfig {
             List<Object> _enum = referencedSchema.getEnum();
 
             property.isEnum = true;
+            property.isString = referencedSchema.getType().equals("string");
 
             Map<String, Object> allowableValues = new HashMap<String, Object>();
             allowableValues.put("values", _enum);
