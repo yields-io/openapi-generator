@@ -638,10 +638,14 @@ class ApiClient(object):
                     value = data[klass.attribute_map[attr]]
                     kwargs[attr] = self.__deserialize(value, attr_type)
 
-        instance = klass(**kwargs)
+        instance = None
 
-        if hasattr(instance, 'get_real_child_model'):
-            klass_name = instance.get_real_child_model(data)
+        if hasattr(klass, 'get_real_child_model'):
+            klass_name = klass.get_real_child_model(data)
             if klass_name:
                 instance = self.__deserialize(data, klass_name)
+
+        if instance is None:
+            instance = klass(**kwargs)
+
         return instance

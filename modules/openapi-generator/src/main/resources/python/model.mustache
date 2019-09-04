@@ -3,10 +3,12 @@
 {{>partial_header}}
 
 import pprint
+import logging
 import re  # noqa: F401
 
 import six
 
+logger = logging.getLogger(__name__)
 
 {{#models}}
 {{#model}}
@@ -43,12 +45,14 @@ class {{classname}}(object):
         '{{name}}': '{{baseName}}'{{#hasMore}},{{/hasMore}}
 {{/vars}}
     }
-{{#discriminator}}
 
+{{#discriminator}}
     discriminator_value_class_map = {
-        {{#children}}'{{^vendorExtensions.x-discriminator-value}}{{name}}{{/vendorExtensions.x-discriminator-value}}{{#vendorExtensions.x-discriminator-value}}{{{vendorExtensions.x-discriminator-value}}}{{/vendorExtensions.x-discriminator-value}}': '{{{classname}}}'{{^-last}},
-        {{/-last}}{{/children}}
+        {{#mappedModels}}'{{{mappingName}}}': '{{{modelName}}}'{{^-last}},
+        {{/-last}}{{/mappedModels}}
     }
+
+    discriminator = '{{{discriminatorName}}}'
 {{/discriminator}}
 
     def __init__(self{{#vars}}, {{name}}={{#defaultValue}}{{{defaultValue}}}{{/defaultValue}}{{^defaultValue}}None{{/defaultValue}}{{/vars}}):  # noqa: E501
@@ -57,7 +61,6 @@ class {{classname}}(object):
 {{/-first}}
         self._{{name}} = None
 {{/vars}}
-        self.discriminator = {{#discriminator}}'{{{discriminatorName}}}'{{/discriminator}}{{^discriminator}}None{{/discriminator}}
 {{#vars}}{{#-first}}
 {{/-first}}
 {{#required}}
@@ -171,11 +174,22 @@ class {{classname}}(object):
 
 {{/vars}}
 {{#discriminator}}
-    def get_real_child_model(self, data):
+    @classmethod
+    def get_real_child_model(cls, data):
         """Returns the real base class specified by the discriminator"""
-        discriminator_key = self.attribute_map[self.discriminator]
-        discriminator_value = data[discriminator_key]
-        return self.discriminator_value_class_map.get(discriminator_value)
+        discriminator_key = cls.attribute_map[cls.discriminator]
+        try:
+            discriminator_value = data[discriminator_key]
+        except KeyError:
+            logger.error("%s - %s discriminator key not found in data %s" %
+                (cls.__name__, discriminator_key, data))
+            raise
+        try:
+            return cls.discriminator_value_class_map[discriminator_value]
+        except KeyError:
+            logger.warning("%s - unexpected %s discriminator value: %s" %
+                (cls.__name__, discriminator_key, discriminator_value))
+            raise
 
 {{/discriminator}}
     def to_dict(self):

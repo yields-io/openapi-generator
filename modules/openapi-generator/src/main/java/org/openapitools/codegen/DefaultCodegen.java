@@ -1858,6 +1858,25 @@ public class DefaultCodegen implements CodegenConfig {
         return m;
     }
 
+    private List<Schema> getDiscriminatorSchemaChilds(Schema schema) {
+        if(schema instanceof ComposedSchema==false) {
+            return Collections.emptyList();
+        }
+        ComposedSchema composedSchema = (ComposedSchema) schema;
+        List<Schema> childs = composedSchema.getAllOf();
+        if(childs==null){
+            childs = composedSchema.getAnyOf();
+        }
+        if(childs==null){
+            childs = composedSchema.getOneOf();
+        }
+        if(childs!=null) {
+            return childs;
+        } else {
+            return Collections.emptyList();
+        }
+    }
+
     private CodegenDiscriminator createDiscriminator(String schemaName, Schema schema) {
         if (schema.getDiscriminator() == null) {
             return null;
@@ -1873,17 +1892,10 @@ public class DefaultCodegen implements CodegenConfig {
                 discriminator.getMappedModels().add(new MappedModel(e.getKey(), modelName));
             }
         } else {
-            Map<String, Schema> allDefinitions = ModelUtils.getSchemas(this.openAPI);
-            allDefinitions.forEach((childName, child) -> {
-                if (child instanceof ComposedSchema && ((ComposedSchema) child).getAllOf() != null) {
-                    Set<String> parentSchemas = ((ComposedSchema) child).getAllOf().stream()
-                            .filter(s -> s.get$ref() != null)
-                            .map(s -> ModelUtils.getSimpleRef(s.get$ref()))
-                            .collect(Collectors.toSet());
-                    if (parentSchemas.contains(schemaName)) {
-                        discriminator.getMappedModels().add(new MappedModel(childName, toModelName(childName)));
-                    }
-                }
+            List<Schema> childs = getDiscriminatorSchemaChilds(schema);
+            childs.forEach((child) -> {
+                String childName = getSchemaType(child);
+                discriminator.getMappedModels().add(new MappedModel(childName, toModelName(childName)));
             });
         }
         return discriminator;
